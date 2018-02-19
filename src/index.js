@@ -4,7 +4,7 @@ const {Display} = require('./display');
 const {Audio} = require('./audio');
 const {mouse, keys} = require('gocanvas');
 const noise = require('./perlin');
-const {SineBuffer, ExponentialEnvelope, LinearEnvelope} = require("./models");
+const {SineBuffer, ASREnvelope, ExponentialEnvelope, LinearEnvelope} = require("./models");
 
 const createEmptyBuffer = (audioCtx, seconds) => {
 	return audioCtx.createBuffer(1, audioCtx.sampleRate * seconds, audioCtx.sampleRate);
@@ -256,7 +256,14 @@ const inter2 = interpolate(actx, perlin, A4n5, .03, 1, 1);
 const instru = product(actx, inter, A4n5);
 
 const curtF440=new SineBuffer(actx, totalSeconds, 440, {});
+const curtLFO=new SineBuffer(actx, totalSeconds, 11, {});
 const curtLinearEnv=new LinearEnvelope(actx, totalSeconds, {});
 const curt2xExp=new ExponentialEnvelope(actx, totalSeconds, {});
 const curtLoggish=new ExponentialEnvelope(actx, totalSeconds, {exponent: 0.5});
-curtF440.mult(curtLoggish);
+const curtADR=ASREnvelope.createInterpolated(
+    new ExponentialEnvelope(actx, 0.3, {}),
+    new LinearEnvelope(actx, 0.5, {startValue:0.7, endValue:0.1}),
+	totalSeconds
+);
+curtF440.mult(curtLFO);
+curtF440.mult(curtADR);
