@@ -4,6 +4,7 @@ const {Display} = require('./display');
 const {Audio} = require('./audio');
 const {mouse, keys} = require('gocanvas');
 const noise = require('./perlin');
+const {SineBuffer, ExponentialEnvelope, LinearEnvelope} = require("./models");
 
 const createEmptyBuffer = (audioCtx, seconds) => {
 	return audioCtx.createBuffer(1, audioCtx.sampleRate * seconds, audioCtx.sampleRate);
@@ -159,6 +160,7 @@ var actx = new (window.AudioContext || window.webkitAudioContext)();
 const audio = new Audio(actx);
 
 getAudioData(actx, './A4.mp3').then(buffer => {
+    buffer = curtF440.buffer;
 	const mainDisplay = new Display(canvas);
 	const currRenderState = {tMin: 0.00, tMax: buffer.duration, yScale: 3}
 	mainDisplay.renderBuffer(buffer, currRenderState);
@@ -252,3 +254,9 @@ const summed = sum(actx, perlin, A5);
 const inter = interpolate(actx, perlin, decay, .03, .1, 1);
 const inter2 = interpolate(actx, perlin, A4n5, .03, 1, 1);
 const instru = product(actx, inter, A4n5);
+
+const curtF440=new SineBuffer(actx, totalSeconds, 440, {});
+const curtLinearEnv=new LinearEnvelope(actx, totalSeconds, {});
+const curt2xExp=new ExponentialEnvelope(actx, totalSeconds, {});
+const curtLoggish=new ExponentialEnvelope(actx, totalSeconds, {exponent: 0.5});
+curtF440.mult(curtLoggish);
