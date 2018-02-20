@@ -6,6 +6,9 @@
  */
 
 /* eslint-disable */
+
+const assert=require("./assert");
+
 const MixOperation = {
 	ADD: "add",
 	MULT: "mult"
@@ -74,7 +77,8 @@ class SampleBuffer {
 	}
 
 	/**
-	 * Mixes us into the buffer passed in as param using the binary operation specified as param
+	 * Mixes our instance buffer into the buffer passed in as param. The mix operation is determined by the local <code>mixOperation</code>.
+	 * So if mixOperation=="add" then our buffer will be added to his.  If mixOperation=="mult" then it will be multiplied in.
 	 * @param {SampleBuffer} targetSampleBuffer
 	 */
 	mixInto(targetSampleBuffer) {
@@ -276,8 +280,11 @@ class ASREnvelope extends EnvelopeBase {
 }
 
 /**
- * Sketch of alan's wave stack.  I made it's elements immutable so that we could easily keep track of dirty
- * states and only regenerate the buffer when a waveform has been added, updated or removed.
+ * Sketch of alan's wave stack.  I made its elements immutable so that we could easily keep track of dirty
+ * states and only regenerate the buffer when a waveform has been added, updated or removed.  What can be done?
+ *  - May add, update and remove stack elements each of which must be an SampleBuffer
+ *  - Can grab the buffer at any time which will always reflect the current state of the whole stack
+ *  - see <code>mixInto</code> for details on mixing works.
  */
 class WaveStack extends SampleBuffer {
 	/**
@@ -299,24 +306,45 @@ class WaveStack extends SampleBuffer {
 	}
 
 	/**
+	 * @returns {number}
+	 */
+	get getStackSampleBufferCount() {
+		return this._stack.length;
+	}
+	/**
+	 * @param {Number} index
+	 * @returns {SampleBuffer}
+	 */
+	getStackSampleBuffer(index) {
+		return this._stack[index];
+	}
+
+	/**
 	 * Adds this sample buffer to our stack and invalidates our buffer
 	 * @param {SampleBuffer} sampleBuffer
 	 * @param {Number} index
+	 * @returns {Number} index of the newly inserted sample buffer.
 	 */
 	addSampleBuffer(sampleBuffer, index = this._stack.length) {
+		assert.ok(sampleBuffer instanceof SampleBuffer);
 		this._stack.splice(index, 0, sampleBuffer);
+		this._dirty = true;
+		return index;
 	}
 
 	/**
 	 * Replaces an existing sample buffer with a new sample buffer
 	 * @param {SampleBuffer} oldSampleBuffer
 	 * @param {SampleBuffer} newSampleBuffer
+	 * @returns {Number} index of the replaced element
 	 */
 	replaceSampleBuffer(oldSampleBuffer, newSampleBuffer) {
+		assert.ok(newSampleBuffer instanceof SampleBuffer);
 		const index = this._stack.indexOf(oldSampleBuffer);
 		if(index > -1) {
-			this._stack.splice(index, 1, newSampleBuffer);
+			this._stack[index] = newSampleBuffer;
 			this._dirty = true;
+			return index;
 		} else {
 			throw new Error("could not find old sample buffer?");
 		}
@@ -324,8 +352,11 @@ class WaveStack extends SampleBuffer {
 
 	/**
 	 * Removes the specified sample buffer
+	 * @param {SampleBuffer} sampleBuffer
+	 * @returns {Number} index of the removed
 	 */
-	deleteSampleBuffer(sampleBuffer) {
+	removeSampleBuffer(sampleBuffer) {
+		assert.ok(sampleBuffer instanceof SampleBuffer);
 		const index = this._stack.indexOf(sampleBuffer);
 		if(index > -1) {
 			this._stack.splice(index, 1);
@@ -333,11 +364,17 @@ class WaveStack extends SampleBuffer {
 		}
 	}
 
+	/**
+	 * We override this guy so that we can generate all of our bits and pieces into our buffer
+	 * @private
+	 */
 	_generateBufferData() {
-		this._dirty = false;
-		this._clearSampleBuffer();
-		for(let index = 0; index < this._stack.length; index++) {
-			this._stack[index].mixInto(this);
+		if(this._dirty) {
+			this._clearSampleBuffer();
+			for(let index = 0; index < this._stack.length; index++) {
+				this._stack[index].mixInto(this);
+			}
+			this._dirty = false;
 		}
 	}
 }

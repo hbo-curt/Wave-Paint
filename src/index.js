@@ -167,7 +167,7 @@ var actx = new (window.AudioContext || window.webkitAudioContext)();
 const audio = new Audio(actx);
 
 getAudioData(actx, './A4.mp3').then(buffer => {
-    buffer = curtF440.buffer;
+    buffer = curtWaveStack.buffer;
 	const mainDisplay = new Display(canvas);
 	const currRenderState = {tMin: 0.00, tMax: buffer.duration, yScale: 3}
 	mainDisplay.renderBuffer(buffer, currRenderState);
@@ -272,7 +272,9 @@ const curtADR=ASREnvelope.createInterpolated(
     new LinearEnvelope(actx, 0.5, {startValue:0.7, endValue:0.1}),
 	totalSeconds
 );
-curtLFO.mixInto(curtF440);
-curtADR.mixInto(curtF440);
 
-const curtWaveStack=new WaveStack(actx, 4, {});
+// @alan - this is an example of the wave-stack.  See the notes on WaveStack for administration
+const curtWaveStack=new WaveStack(actx, 2, {});
+curtWaveStack.addSampleBuffer(curtF440);
+curtWaveStack.addSampleBuffer(curtLFO);
+curtWaveStack.addSampleBuffer(curtADR);
