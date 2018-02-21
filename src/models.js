@@ -7,6 +7,7 @@
 
 /* eslint-disable */
 
+const _=require("lodash");
 const assert=require("./assert");
 
 const MixOperation = {
@@ -295,6 +296,9 @@ class WaveStack extends SampleBuffer {
 	constructor(context, duration, {channels = 1}) {
 		super(context, duration, {channels});
 		this._dirty = false;
+		/**
+		 * @type {[{sampleBuffer:SampleBuffer, muted:Boolean}]}
+		 */
 		this._stack = [];
 	}
 
@@ -302,7 +306,7 @@ class WaveStack extends SampleBuffer {
 		if(this._dirty) {
 			this._generateBufferData();
 		}
-		return super.buffer;
+		return this._buffer;
 	}
 
 	/**
@@ -316,8 +320,36 @@ class WaveStack extends SampleBuffer {
 	 * @returns {SampleBuffer}
 	 */
 	getStackSampleBuffer(index) {
-		return this._stack[index];
+		return this._stack[index].sampleBuffer;
 	}
+
+	/**
+	 * Gets the muted state of the sample-buffer or index specified
+	 * @param {Number|SampleBuffer} indexOrSampleBuffer
+	 * @returns {Boolean}
+	 */
+	getMutedState(indexOrSampleBuffer) {
+		const index=(indexOrSampleBuffer instanceof SampleBuffer)
+			? _.findIndex(this._stack, {sampleBuffer: indexOrSampleBuffer})
+			: indexOrSampleBuffer;
+		return this._stack[index].muted;
+	}
+
+	/**
+	 * Sets the muted state. If it has changed then the buffer will be marked as dirty
+	 * @param {Number|SampleBuffer} indexOrSampleBuffer
+	 * @param {Boolean} muted
+	 */
+	setMutedState(indexOrSampleBuffer, muted) {
+		const index=(indexOrSampleBuffer instanceof SampleBuffer)
+			? _.findIndex(this._stack, {sampleBuffer: indexOrSampleBuffer})
+			: indexOrSampleBuffer;
+		if(this._stack[index].muted!==muted) {
+			this._stack[index].muted=muted;
+			this._dirty=true;
+		}
+	}
+
 
 	/**
 	 * Adds this sample buffer to our stack and invalidates our buffer
@@ -327,7 +359,10 @@ class WaveStack extends SampleBuffer {
 	 */
 	addSampleBuffer(sampleBuffer, index = this._stack.length) {
 		assert.ok(sampleBuffer instanceof SampleBuffer);
-		this._stack.splice(index, 0, sampleBuffer);
+		this._stack.splice(index, 0, {
+			sampleBuffer: sampleBuffer,
+			muted: false
+		});
 		this._dirty = true;
 		return index;
 	}
@@ -340,9 +375,12 @@ class WaveStack extends SampleBuffer {
 	 */
 	replaceSampleBuffer(oldSampleBuffer, newSampleBuffer) {
 		assert.ok(newSampleBuffer instanceof SampleBuffer);
-		const index = this._stack.indexOf(oldSampleBuffer);
+		const index = _.findIndex(this._stack, {sampleBuffer: oldSampleBuffer});
 		if(index > -1) {
-			this._stack[index] = newSampleBuffer;
+			this._stack[index] = {
+				sampleBuffer: newSampleBuffer,
+				muted: false
+			};
 			this._dirty = true;
 			return index;
 		} else {
@@ -357,7 +395,7 @@ class WaveStack extends SampleBuffer {
 	 */
 	removeSampleBuffer(sampleBuffer) {
 		assert.ok(sampleBuffer instanceof SampleBuffer);
-		const index = this._stack.indexOf(sampleBuffer);
+		const index = _.findIndex(this._stack, {sampleBuffer:sampleBuffer});
 		if(index > -1) {
 			this._stack.splice(index, 1);
 			this._dirty = true;
@@ -372,7 +410,9 @@ class WaveStack extends SampleBuffer {
 		if(this._dirty) {
 			this._clearSampleBuffer();
 			for(let index = 0; index < this._stack.length; index++) {
-				this._stack[index].mixInto(this);
+				if(!this._stack[index].muted) {
+					this._stack[index].sampleBuffer.mixInto(this);
+				}
 			}
 			this._dirty = false;
 		}

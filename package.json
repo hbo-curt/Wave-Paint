@@ -54,6 +54,7 @@
     "webpack-merge": "4.1.1"
   },
   "dependencies": {
-    "gocanvas": "git://github.com/alanf718/GoCanvas.git"
+    "gocanvas": "git://github.com/alanf718/GoCanvas.git",
+    "lodash": "^4.17.5"
   }
 }

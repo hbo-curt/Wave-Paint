@@ -56,5 +56,16 @@ describe("models", function() {
 				sampleBuffer = new models.SineBuffer(context, 1, 440, {});
 			assert.throws(()=>instance.replaceSampleBuffer(sampleBuffer, sampleBuffer));
 		});
+
+		it("should get and set the muted state", function() {
+			const context = new FakeAudioContext(),
+				sampleBuffer = new models.SineBuffer(context, 1, 440, {}),
+				instance = new models.WaveStack(context, 2, {}),
+				index = instance.addSampleBuffer(sampleBuffer);
+			instance.setMutedState(index, true);
+			assert.equal(instance.getMutedState(index), true);
+			instance.setMutedState(sampleBuffer, false);
+			assert.equal(instance.getMutedState(sampleBuffer), false);
+		});
 	});
 });
